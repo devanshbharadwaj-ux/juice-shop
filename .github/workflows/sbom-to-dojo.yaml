@@ -1,4 +1,4 @@
-name: Syft SBOM to DefectDojo
+name: Syft SBOM to Defectdojo
 
 on:
   push:
