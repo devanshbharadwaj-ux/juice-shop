@@ -1,0 +1,31 @@
+name: Syft SBOM to DefectDojo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  syft-sbom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Syft
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+      - name: Generate SBOM with Syft (CycloneDX JSON)
+        run: syft dir:. -o cyclonedx-json > sbom.json
+
+      - name: Upload SBOM to DefectDojo
+  uses: DefectDojo/defectdojo-import-scan@v1
+  with:
+    defectdojo_url: ${{ secrets.DEFECTDOJO_HOST }}
+    defectdojo_api_key: ${{ secrets.DEFECTDOJO_API_KEY }}
+    file: sbom.json
+    scan_type: "CycloneDX"
+    engagement: ${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}
+
