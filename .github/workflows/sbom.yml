@@ -3,7 +3,7 @@ name: Syft SBOM to DefectDojo
 on:
   push:
     branches:
-      - main
+      - master
 
 jobs:
   syft-sbom:
