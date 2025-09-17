@@ -19,27 +19,28 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Generate SBOM with Syft (CycloneDX JSON)
-        run: syft nginx:latest -o cyclonedx > sbom.json
+        run: syft nginx:latest -o cyclonedx-json > sbom.json
 
-      - name: Scan SBOM with Grype (CycloneDX vuln report)
-        run: grype sbom:sbom.json -o xml > vuln-cyclonedx.json
+      - name: Scan SBOM with Grype (JSON output)
+        run: grype sbom:sbom.json -o json > vuln-grype.json
 
       - name: Debug Grype Output
-        run: cat vuln-cyclonedx.json | head -50
+        run: cat vuln-grype.json | head -50
 
       - name: Upload Vulnerability Report as artifact
         uses: actions/upload-artifact@v4
         with:
           name: vuln-report
-          path: vuln-cyclonedx.json
+          path: vuln-grype.json
 
       - name: Upload to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
-            -F "file=@vuln-cyclonedx.json;type=application/json" \
-            -F "scan_type=Dependency Check Scan" \
+            -F "file=@vuln-grype.json;type=application/json" \
+            -F "scan_type=Grype" \
             -F "engagement_name=syft-gr" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
+
 
