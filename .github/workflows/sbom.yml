@@ -26,13 +26,17 @@ jobs:
       - name: Debug Grype Output
         run: cat vuln-cyclonedx.json | head -50  
 
-      
+      - name: Upload Vulnerability Report as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vuln-report
+          path: vuln-cyclonedx.json
          
       - name: Upload Vulnerability Report to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "scan_type=Grype" \
+            -F "scan_type=cyclonedx Scan" \
             -F "file=@vuln-cyclonedx.json"
 
