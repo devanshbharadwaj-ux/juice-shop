@@ -19,7 +19,7 @@ jobs:
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
       - name: Generate SBOM with Syft (CycloneDX JSON)
-        run: syft nginx:latest -o cyclonedx-json > sbom.json
+        run: syft nginx:latest -o cyclonedx > sbom.json
 
       - name: Scan SBOM with Grype (CycloneDX vuln report)
         run: grype sbom:sbom.json  > vuln-cyclonedx.json
@@ -38,8 +38,8 @@ jobs:
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "file=@vuln-cyclonedx.json;type=application/json" \
-            -F "scan_type=cyclonedx Scan" \
-            -F "engagement_name=syft-grype-sbom" \
+            -F "scan_type=cycloneDx Scan" \
+            -F "engagement_name=syft-gr" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
 
