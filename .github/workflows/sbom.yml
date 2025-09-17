@@ -38,7 +38,7 @@ jobs:
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "file=@vuln-cyclonedx.json;type=application/json" \
-            -F "scan_type=CycloneDX" \
+            -F "scan_type=CycloneDX Scan" \
             -F "engagement_name=syft-grype-sbom" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
