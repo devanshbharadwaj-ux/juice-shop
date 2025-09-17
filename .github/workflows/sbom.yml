@@ -25,12 +25,17 @@ jobs:
         run: grype sbom:sbom.json -o cyclonedx-json > vuln-cyclonedx.json
       - name: Debug Grype Output
         run: cat vuln-cyclonedx.json | head -50  
+
+      - name: check scan type
+        run: |
+         curl -X GET "${DEFECTDOJO_HOST}/api/v2/importers/" \
+          -H "Authorization: Token ${DEFECTDOJO_API_KEY}"
          
       - name: Upload Vulnerability Report to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "scan_type=CycloneDX JSON" \
+            -F "scan_type=CycloneDX Scan" \
             -F "file=@vuln-cyclonedx.json"
 
