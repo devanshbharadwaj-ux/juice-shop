@@ -26,10 +26,7 @@ jobs:
       - name: Debug Grype Output
         run: cat vuln-cyclonedx.json | head -50  
 
-      - name: check scan type
-        run: |
-         curl -X GET "${DEFECTDOJO_HOST}/api/v2/importers/" \
-          -H "Authorization: Token ${DEFECTDOJO_API_KEY}"
+      
          
       - name: Upload Vulnerability Report to DefectDojo
         run: |
