@@ -22,7 +22,7 @@ jobs:
         run: syft ${{ github.workspace }} -o cyclonedx-json > sbom.json
 
       - name: Scan SBOM with Grype (CycloneDX vuln report)
-        run: grype sbom:sbom.json -o cyclonedx-json > vuln-cyclonedx.json
+        run: grype sbom:sbom.json -o json > vuln-cyclonedx.json
 
       - name: Debug Grype Output
         run: cat vuln-cyclonedx.json | head -50
@@ -38,7 +38,7 @@ jobs:
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "file=@vuln-cyclonedx.json;type=application/json" \
-            -F "scan_type=CycloneDX Scan" \
+            -F "scan_type=Grype" \
             -F "engagement_name=syft-grype-sbom" \
             -F "product_name=MyProduct" \
             -F "auto_create_context=true"
