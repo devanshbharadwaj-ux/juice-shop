@@ -21,22 +21,29 @@ jobs:
           # Wait for Juice Shop to be accessible before running Nikto
           sleep 15  # Adjust this if necessary based on the app startup time
 
-      # Step 3: Run Nikto Scan against the running Juice Shop web app
+      # Step 3: Check directory permissions (Debugging Step)
+      - name: Check directory permissions
+        run: |
+          # Ensure the directory exists and check permissions
+          mkdir -p $GITHUB_WORKSPACE/nikto_reports
+          ls -l $GITHUB_WORKSPACE/nikto_reports  # List the directory contents and permissions
+
+      # Step 4: Run Nikto Scan against the running Juice Shop web app
       - name: Run Nikto scan
         run: |
           mkdir -p $GITHUB_WORKSPACE/nikto_reports  # Ensure directory exists for output
-          docker run --rm -v $GITHUB_WORKSPACE:/data ghcr.io/sullo/nikto \
+          docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
             -output /data/nikto-report.json -Format json
 
-      # Step 4: Upload Nikto JSON Report as Artifact
+      # Step 5: Upload Nikto JSON Report as Artifact
       - name: Upload Nikto JSON Report as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nikto-report
           path: $GITHUB_WORKSPACE/nikto_reports/nikto-report.json
 
-      # Step 5: Upload Nikto results to DefectDojo
+      # Step 6: Upload Nikto results to DefectDojo
       - name: Upload Nikto results to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
@@ -44,5 +51,6 @@ jobs:
             -F "scan_type=Nikto Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
             -F "file=@$GITHUB_WORKSPACE/nikto_reports/nikto-report.json"
+
 
 
