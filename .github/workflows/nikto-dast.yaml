@@ -25,7 +25,7 @@ jobs:
       - name: Run Nikto scan
         run: |
           mkdir -p $GITHUB_WORKSPACE/nikto_reports  # Ensure directory exists for output
-          docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
+          docker run --rm -v $GITHUB_WORKSPACE:/data ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
             -output /data/nikto-report.json -Format json
 
@@ -44,4 +44,5 @@ jobs:
             -F "scan_type=Nikto Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
             -F "file=@$GITHUB_WORKSPACE/nikto_reports/nikto-report.json"
+
 
