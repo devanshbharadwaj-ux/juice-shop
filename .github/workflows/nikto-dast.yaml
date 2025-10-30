@@ -1,0 +1,45 @@
+name: Nikto DAST Scan
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  nikto-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Run the Juice Shop Docker Container
+      - name: Run OWASP Juice Shop Docker Container
+        run: |
+          # Run Juice Shop on port 3000
+          docker run --rm -d -p 3000:3000 bkimminich/juice-shop
+
+      # Step 2: Wait for the app to fully start
+      - name: Wait for Juice Shop to start
+        run: |
+          # Wait for Juice Shop to be accessible before running Nikto
+          sleep 15  # Adjust this if necessary based on the app startup time
+
+      # Step 3: Run Nikto Scan against the running Juice Shop web app
+      - name: Run Nikto scan
+        run: |
+          docker run --rm -v $PWD:/data ghcr.io/sullo/nikto \
+            -h http://localhost:3000 \
+            -output /data/nikto-report.json -Format json
+
+      # Step 4: Upload Nikto report as an artifact
+      - name: Upload Nikto JSON Report as Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: nikto-report
+          path: nikto-report.json
+
+      # Step 5: Upload Nikto JSON results to DefectDojo
+      - name: Upload Nikto results to DefectDojo
+        run: |
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
+            -F "scan_type=Nikto Scan" \
+            -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
+            -F "file=@nikto-report.json"
