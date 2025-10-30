@@ -24,22 +24,24 @@ jobs:
       # Step 3: Run Nikto Scan against the running Juice Shop web app
       - name: Run Nikto scan
         run: |
-          docker run --rm -v $PWD:/data ghcr.io/sullo/nikto \
+          mkdir -p $GITHUB_WORKSPACE/nikto_reports  # Ensure directory exists for output
+          docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
             -output /data/nikto-report.json -Format json
 
-      # Step 4: Upload Nikto report as an artifact
+      # Step 4: Upload Nikto JSON Report as Artifact
       - name: Upload Nikto JSON Report as Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v2
         with:
           name: nikto-report
-          path: nikto-report.json
+          path: $GITHUB_WORKSPACE/nikto_reports/nikto-report.json
 
-      # Step 5: Upload Nikto JSON results to DefectDojo
+      # Step 5: Upload Nikto results to DefectDojo
       - name: Upload Nikto results to DefectDojo
         run: |
           curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "scan_type=Nikto Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "file=@nikto-report.json"
+            -F "file=@$GITHUB_WORKSPACE/nikto_reports/nikto-report.json"
+
