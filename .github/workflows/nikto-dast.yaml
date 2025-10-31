@@ -33,8 +33,8 @@ jobs:
         run: |
           # Run Nikto and save the report to the correct directory
           pwd 
-          ls
-          chmod +x /nikto-report 
+          ls -l
+          chmod +x nikto-report 
           docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
             -output /data/nikto-report.json -Format json
