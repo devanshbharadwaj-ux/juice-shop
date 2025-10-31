@@ -23,20 +23,20 @@ jobs:
             --user $(id -u):$(id -g) \
             -v "${GITHUB_WORKSPACE}/nikto_reports:/data" \
             alpine sh -c "echo 'ok' > /data/test.txt && ls -la /data"
-          echo "✅ Host directory after mapping test:"
+          echo "Host directory after mapping test:"
           ls -la "${GITHUB_WORKSPACE}/nikto_reports"
 
       - name: Run Nikto scan
         run: |
           mkdir -p "${GITHUB_WORKSPACE}/nikto_reports"
-          echo "🚀 Starting Nikto scan..."
+          echo " Starting Nikto scan..."
           docker run --rm \
             --user $(id -u):$(id -g) \
             -v "${GITHUB_WORKSPACE}/nikto_reports:/data" \
             ghcr.io/sullo/nikto \
-            -h http://localhost:3000 \
+            -h http://testphp.vulnweb.com/ \
             -output /data/nikto-report.json -Format json
-          echo "✅ Contents of report directory after Nikto run:"
+          echo " Contents of report directory after Nikto run:"
           ls -la "${GITHUB_WORKSPACE}/nikto_reports"
 
       - name: Upload Nikto JSON Report as Artifact
@@ -50,14 +50,14 @@ jobs:
         if: always()
         run: |
           if [ -f "${GITHUB_WORKSPACE}/nikto_reports/nikto-report.json" ]; then
-            echo "📤 Uploading Nikto report to DefectDojo..."
+            echo " Uploading Nikto report to DefectDojo..."
             curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
               -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
               -F "scan_type=Nikto Scan" \
               -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
               -F "file=@${GITHUB_WORKSPACE}/nikto_reports/nikto-report.json"
           else
-            echo "⚠️ Nikto report not found. Skipping upload."
+            echo " Nikto report not found. Skipping upload."
           fi
 
 
