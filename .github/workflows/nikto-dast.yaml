@@ -34,7 +34,7 @@ jobs:
           # Run Nikto and save the report to the correct directory
           pwd 
           ls
-          chmod +x /data/nikto-report.json 
+          chmod +x /nikto-report 
           docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
             -output /data/nikto-report.json -Format json
