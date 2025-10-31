@@ -9,52 +9,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Run OWASP Juice Shop Docker Container
       - name: Run OWASP Juice Shop Docker Container
         run: |
           docker run --rm -d -p 3000:3000 bkimminich/juice-shop
 
-      # Step 2: Wait for the app to fully start
       - name: Wait for Juice Shop to start
         run: sleep 15
 
-      # Step 3: Prepare report directory
-      - name: Prepare report directory with permissions
-        run: |
-          mkdir -p "${GITHUB_WORKSPACE}/nikto_reports"
-          sudo chown -R 0:0 "${GITHUB_WORKSPACE}/nikto_reports"
-          chmod -R 777 "${GITHUB_WORKSPACE}/nikto_reports"
-          echo "✅ Directory ready:"
-          ls -ld "${GITHUB_WORKSPACE}/nikto_reports"
-
-      # Step 4: Verify Docker can write to the mount
       - name: Verify Docker volume mapping
         run: |
-          docker run --rm -v "${GITHUB_WORKSPACE}/nikto_reports:/data" alpine sh -c "echo 'container-write-test' > /data/test.txt && ls -la /data"
-          echo "✅ Host directory contents after container write test:"
+          mkdir -p "${GITHUB_WORKSPACE}/nikto_reports"
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -v "${GITHUB_WORKSPACE}/nikto_reports:/data" \
+            alpine sh -c "echo 'ok' > /data/test.txt && ls -la /data"
+          echo "✅ Host directory after mapping test:"
           ls -la "${GITHUB_WORKSPACE}/nikto_reports"
 
-      # Step 5: Run Nikto scan
       - name: Run Nikto scan
         run: |
+          mkdir -p "${GITHUB_WORKSPACE}/nikto_reports"
           echo "🚀 Starting Nikto scan..."
-          docker run --rm -v "${GITHUB_WORKSPACE}/nikto_reports:/data" ghcr.io/sullo/nikto \
+          docker run --rm \
+            --user $(id -u):$(id -g) \
+            -v "${GITHUB_WORKSPACE}/nikto_reports:/data" \
+            ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
-            -output /data/nikto-report.json -Format json || true
+            -output /data/nikto-report.json -Format json
           echo "✅ Contents of report directory after Nikto run:"
           ls -la "${GITHUB_WORKSPACE}/nikto_reports"
 
-      # Step 6: Upload Nikto JSON Report as Artifact
       - name: Upload Nikto JSON Report as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nikto-report
           path: "${{ github.workspace }}/nikto_reports/nikto-report.json"
           if-no-files-found: warn
-          compression-level: 6
-          overwrite: false
 
-      # Step 7: Upload Nikto results to DefectDojo
       - name: Upload Nikto results to DefectDojo
         if: always()
         run: |
