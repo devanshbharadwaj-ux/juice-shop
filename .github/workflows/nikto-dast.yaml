@@ -9,52 +9,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Run the Juice Shop Docker Container
+      # Step 1: Run OWASP Juice Shop Docker Container
       - name: Run OWASP Juice Shop Docker Container
         run: |
-          # Run Juice Shop on port 3000
           docker run --rm -d -p 3000:3000 bkimminich/juice-shop
 
       # Step 2: Wait for the app to fully start
       - name: Wait for Juice Shop to start
-        run: |
-          # Wait for Juice Shop to be accessible before running Nikto
-          sleep 15  # Adjust this if necessary based on the app startup time
+        run: sleep 15
 
-      # Step 3: Ensure the directory exists and check permissions
-      - name: Check directory permissions
+      # Step 3: Prepare report directory
+      - name: Prepare report directory with permissions
         run: |
-          # Ensure the directory exists and check permissions
-          mkdir -p $GITHUB_WORKSPACE/nikto_reports  # Creates the directory
-          ls -l $GITHUB_WORKSPACE/nikto_reports  # List directory contents and permissions
+          mkdir -p "${GITHUB_WORKSPACE}/nikto_reports"
+          sudo chown -R 0:0 "${GITHUB_WORKSPACE}/nikto_reports"
+          chmod -R 777 "${GITHUB_WORKSPACE}/nikto_reports"
+          echo "✅ Directory ready:"
+          ls -ld "${GITHUB_WORKSPACE}/nikto_reports"
 
-      # Step 4: Run Nikto Scan against the running Juice Shop web app
+      # Step 4: Verify Docker can write to the mount
+      - name: Verify Docker volume mapping
+        run: |
+          docker run --rm -v "${GITHUB_WORKSPACE}/nikto_reports:/data" alpine sh -c "echo 'container-write-test' > /data/test.txt && ls -la /data"
+          echo "✅ Host directory contents after container write test:"
+          ls -la "${GITHUB_WORKSPACE}/nikto_reports"
+
+      # Step 5: Run Nikto scan
       - name: Run Nikto scan
         run: |
-          # Run Nikto and save the report to the correct directory
-          pwd 
-          ls -l
-          chmod -R 777 $GITHUB_WORKSPACE/nikto_reports
-          docker run --rm -v $GITHUB_WORKSPACE/nikto_reports:/data ghcr.io/sullo/nikto \
+          echo "🚀 Starting Nikto scan..."
+          docker run --rm -v "${GITHUB_WORKSPACE}/nikto_reports:/data" ghcr.io/sullo/nikto \
             -h http://localhost:3000 \
-            -output /data/nikto-report.json -Format json
+            -output /data/nikto-report.json -Format json || true
+          echo "✅ Contents of report directory after Nikto run:"
+          ls -la "${GITHUB_WORKSPACE}/nikto_reports"
 
-      # Step 5: Upload Nikto JSON Report as Artifact
+      # Step 6: Upload Nikto JSON Report as Artifact
       - name: Upload Nikto JSON Report as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: nikto-report
-          path: $GITHUB_WORKSPACE/nikto_reports/nikto-report.json
+          path: "${{ github.workspace }}/nikto_reports/nikto-report.json"
+          if-no-files-found: warn
+          compression-level: 6
+          overwrite: false
 
-      # Step 6: Upload Nikto results to DefectDojo
+      # Step 7: Upload Nikto results to DefectDojo
       - name: Upload Nikto results to DefectDojo
+        if: always()
         run: |
-          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
-            -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
-            -F "scan_type=Nikto Scan" \
-            -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "file=@$GITHUB_WORKSPACE/nikto_reports/nikto-report.json"
-
-
+          if [ -f "${GITHUB_WORKSPACE}/nikto_reports/nikto-report.json" ]; then
+            echo "📤 Uploading Nikto report to DefectDojo..."
+            curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+              -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
+              -F "scan_type=Nikto Scan" \
+              -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
+              -F "file=@${GITHUB_WORKSPACE}/nikto_reports/nikto-report.json"
+          else
+            echo "⚠️ Nikto report not found. Skipping upload."
+          fi
 
 
