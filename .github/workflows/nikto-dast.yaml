@@ -51,7 +51,7 @@ jobs:
         run: |
           if [ -f "${GITHUB_WORKSPACE}/nikto_reports/nikto-report.json" ]; then
             echo " Uploading Nikto report to DefectDojo..."
-            curl -X POST "${{secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+            curl -X POST "${{secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
               -H "Authorization: Token ${{secrets.DEFECTDOJO_API_KEY }}" \
               -F "scan_type=Nikto Scan" \
               -F "engagement=${{secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
