@@ -4,7 +4,6 @@ on:
   push:
     branches: [ master ]
   
-
 jobs:
   checkov-scan:
     runs-on: ubuntu-latest
