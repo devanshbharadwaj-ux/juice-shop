@@ -39,13 +39,13 @@ jobs:
           path: advanced-security-terraform/reports/
 
       - name: Send Checkov report to DefectDojo
-        if: ${{ secrets.DEFECTDOJO_URL != '' && secrets.DEFECTDOJO_API_KEY != '' }}
+        if: ${{ secrets.DEFECTDOJO_HOST != '' && secrets.DEFECTDOJO_API_KEY != '' }}
         env:
           DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
-          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_HOST }}
         run: |
           echo " Uploading report to DefectDojo..."
-          curl -X POST "${DEFECTDOJO_URL}/api/v2/import-scan/" \
+          curl -X POST "${DEFECTDOJO_HOST}/api/v2/import-scan/" \
             -H "Authorization: Token ${DEFECTDOJO_API_KEY}" \
             -H "accept: application/json" \
             -F "scan_type=Checkov Scan" \
