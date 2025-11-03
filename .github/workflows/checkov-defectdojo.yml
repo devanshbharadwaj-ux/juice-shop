@@ -31,7 +31,14 @@ jobs:
           cd advanced-security-terraform
           mkdir -p reports
           
-          checkov -d . --output json --compact --output-file-path reports/checkov-report.json || true
+           checkov -d . --output json --compact --output-file-path reports/checkov-report.json
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -eq 2 ]; then
+            echo " Checkov found issues, but continuing..."
+          elif [ $EXIT_CODE -ne 0 ]; then
+            echo "Checkov scan failed with unexpected error code $EXIT_CODE"
+            exit $EXIT_CODE
+          fi
           echo " Checkov scan completed"
 
           jq '.[0]' reports/checkov-report.json > reports/checkov-fixed.json
