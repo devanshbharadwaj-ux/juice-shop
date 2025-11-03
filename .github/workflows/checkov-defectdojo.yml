@@ -43,7 +43,7 @@ jobs:
           echo " Uploading report to DefectDojo..."
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
-            -F "scan_type=json" \
+            -F "scan_type=Checkov Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
             -F "file=@advanced-security-terraform/reports/checkov-report.json" \
             -F "active=true" \
