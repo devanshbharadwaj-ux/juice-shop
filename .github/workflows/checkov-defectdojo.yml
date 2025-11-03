@@ -42,7 +42,7 @@ jobs:
 
         run: |
           echo " Uploading report to DefectDojo..."
-          url -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
+          curl -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "scan_type=json" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
