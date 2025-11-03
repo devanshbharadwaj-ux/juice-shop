@@ -1,0 +1,58 @@
+name: Terraform Security Scan with Checkov
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  checkov-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone target Terraform repository
+        run: |
+          git clone https://github.com/octodemo/advanced-security-terraform.git
+          cd advanced-security-terraform
+          echo " Repository cloned successfully"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.2'
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov scan on cloned repo
+        run: |
+          cd advanced-security-terraform
+          mkdir -p reports
+          checkov -d . -o sarif --output-file-path reports/checkov-report.sarif
+          checkov -d . -o json --output-file-path reports/checkov-report.json
+          echo " Checkov scan completed"
+
+      - name: Upload Checkov reports as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-reports
+          path: advanced-security-terraform/reports/
+
+      - name: Send Checkov report to DefectDojo
+        if: ${{ secrets.DEFECTDOJO_URL != '' && secrets.DEFECTDOJO_API_KEY != '' }}
+        env:
+          DEFECTDOJO_API_KEY: ${{ secrets.DEFECTDOJO_API_KEY }}
+          DEFECTDOJO_URL: ${{ secrets.DEFECTDOJO_URL }}
+        run: |
+          echo " Uploading report to DefectDojo..."
+          curl -X POST "${DEFECTDOJO_URL}/api/v2/import-scan/" \
+            -H "Authorization: Token ${DEFECTDOJO_API_KEY}" \
+            -H "accept: application/json" \
+            -F "scan_type=Checkov Scan" \
+            -F "file=@advanced-security-terraform/reports/checkov-report.json" \
+            -F "active=true" \
+            -F "verified=true" \
+            -F "engagement=1" \
+            -F "minimum_severity=Info" \
+            -F "auto_create_context=true"
