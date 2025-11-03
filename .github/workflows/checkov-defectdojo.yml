@@ -20,41 +20,54 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install Checkov
+      - name: Install Checkov and jq
         run: | 
-         pip install checkov
-         sudo apt-get update -y
-         sudo apt-get install -y jq
+          pip install checkov
+          sudo apt-get update -y
+          sudo apt-get install -y jq
 
       - name: Run Checkov scan on cloned repo
         run: |
-            cd advanced-security-terraform
-            mkdir -p reports
+          cd advanced-security-terraform
+          mkdir -p reports
           
-            echo "🚀 Running Checkov scan..."
-            checkov -d .  --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
+          echo "🚀 Running Checkov scan..."
+          checkov -d . --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
           
-            #Ensure EXIT_CODE is always defined
-            EXIT_CODE=${EXIT_CODE:-0}
+          # Ensure EXIT_CODE is always defined
+          EXIT_CODE=${EXIT_CODE:-0}
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "✅ Checkov scan completed successfully."
+          elif [ $EXIT_CODE -eq 2 ]; then
+            echo "⚠️ Checkov found policy violations (exit 2) — continuing workflow."
+          else
+            echo "⚠️ Checkov exited with code $EXIT_CODE (likely config or parsing issue) — continuing anyway."
+          fi
 
-            if [ $EXIT_CODE -eq 0 ]; then
-             echo "✅ Checkov scan completed successfully."
-            elif [ $EXIT_CODE -eq 2 ]; then
-             echo "⚠️ Checkov found policy violations (exit 2) — continuing workflow."
+          # --- Safe jq validation and repair logic ---
+          if [ -f reports/checkov-report.json ]; then
+            echo "🔍 Validating Checkov JSON format..."
+            if jq empty reports/checkov-report.json > /dev/null 2>&1; then
+              echo "✅ JSON format valid — copying to fixed file."
+              cp reports/checkov-report.json reports/checkov-fixed.json
             else
-             echo "⚠️ Checkov exited with code $EXIT_CODE (likely config or parsing issue) — continuing anyway."
-            fi
+              echo "⚠️ Invalid JSON detected — attempting safe repair..."
+              cp reports/checkov-report.json reports/checkov-report.backup.json
+              sed -E 's/,\s*}/}/g; s/,\s*]/]/g' reports/checkov-report.backup.json > reports/checkov-fixed.json || true
 
-            # Ensure the file exists before uploading
-            if [ -f reports/checkov-report.json ]; then
-             jq '.[0]' reports/checkov-report.json > reports/checkov-fixed.json || cp reports/checkov-report.json reports/checkov-fixed.json
-             echo "✅ JSON formatted for DefectDojo."
-            else
-             echo "{}" > reports/checkov-fixed.json
-             echo "⚠️ No report generated, created empty file."
+              if jq empty reports/checkov-fixed.json > /dev/null 2>&1; then
+                echo "✅ JSON repaired successfully."
+              else
+                echo "❌ Could not repair JSON, restoring backup."
+                cp reports/checkov-report.backup.json reports/checkov-fixed.json
+              fi
             fi
-
-          
+            echo "📊 Showing Checkov summary for debug:"
+            jq '.[]?.summary? // empty' reports/checkov-fixed.json || true
+          else
+            echo "{}" > reports/checkov-fixed.json
+            echo "⚠️ No report generated, created empty file."
+          fi
 
       - name: Upload Checkov reports as artifact
         uses: actions/upload-artifact@v4
@@ -63,7 +76,6 @@ jobs:
           path: advanced-security-terraform/reports/
 
       - name: Send Checkov report to DefectDojo
-
         run: |
           echo " Uploading report to DefectDojo..."
           curl -X POST "${{ secrets.DEFECTDOJO_HOST }}/api/v2/import-scan/" \
@@ -75,3 +87,4 @@ jobs:
             -F "verified=true" \
             -F "minimum_severity=Info" \
             -F "auto_create_context=true"
+
