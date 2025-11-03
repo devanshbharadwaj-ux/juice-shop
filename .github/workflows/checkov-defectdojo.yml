@@ -43,26 +43,18 @@ jobs:
             echo "⚠️ Checkov exited with code $EXIT_CODE — continuing anyway."
           fi
 
-          # --- Improved jq handling for both object and array structures ---
+          # --- Proper jq extraction for Checkov array output ---
           if [ -f reports/checkov-report.json ]; then
-            echo "🔍 Validating Checkov JSON format..."
-            if jq empty reports/checkov-report.json > /dev/null 2>&1; then
-              echo "✅ JSON is valid, checking structure..."
+            echo "🔍 Extracting JSON safely..."
+            
+            # If it's an array, flatten and keep only the object content
+            jq 'if type=="array" then .[] else . end' reports/checkov-report.json > reports/checkov-fixed.json
 
-              # Detect if root element is an array or object
-              ROOT_TYPE=$(jq -r 'if type=="array" then "array" else "object" end' reports/checkov-report.json)
-
-              if [ "$ROOT_TYPE" = "array" ]; then
-                echo "📦 Root type: array — extracting first element."
-                jq '.[0]' reports/checkov-report.json > reports/checkov-fixed.json
-              else
-                echo "📦 Root type: object — copying as is."
-                cp reports/checkov-report.json reports/checkov-fixed.json
-              fi
-
-              echo "✅ JSON formatted successfully for DefectDojo."
+            # Validation
+            if jq empty reports/checkov-fixed.json > /dev/null 2>&1; then
+              echo "✅ checkov-fixed.json created successfully."
             else
-              echo "⚠️ Invalid JSON detected — keeping original."
+              echo "⚠️ Could not parse JSON correctly, using fallback copy."
               cp reports/checkov-report.json reports/checkov-fixed.json
             fi
 
