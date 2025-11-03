@@ -21,7 +21,10 @@ jobs:
           python-version: '3.12'
 
       - name: Install Checkov
-        run: pip install checkov
+        run: | 
+         pip install checkov
+         sudo apt-get update -y
+         sudo apt-get install -y jq
 
       - name: Run Checkov scan on cloned repo
         run: |
@@ -30,6 +33,9 @@ jobs:
           
           checkov -d . --output json --compact --output-file-path reports/checkov-report.json || true
           echo " Checkov scan completed"
+
+          jq '.[0]' reports/checkov-report.json > reports/checkov-fixed.json
+          echo " JSON format fixed for DefectDojo"
 
       - name: Upload Checkov reports as artifact
         uses: actions/upload-artifact@v4
@@ -45,7 +51,7 @@ jobs:
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "scan_type=Checkov Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "file=@advanced-security-terraform/reports/checkov-report.json" \
+            -F "file=@advanced-security-terraform/reports/checkov-fixed.json" \
             -F "active=true" \
             -F "verified=true" \
             -F "minimum_severity=Info" \
