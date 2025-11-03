@@ -32,7 +32,7 @@ jobs:
             mkdir -p reports
           
             echo "🚀 Running Checkov scan..."
-            checkov -d . --compact --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
+            checkov -d .  --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
           
             #Ensure EXIT_CODE is always defined
             EXIT_CODE=${EXIT_CODE:-0}
