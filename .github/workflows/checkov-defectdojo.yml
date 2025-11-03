@@ -34,36 +34,40 @@ jobs:
           echo "🚀 Running Checkov scan..."
           checkov -d . --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
           
-          # Ensure EXIT_CODE is always defined
           EXIT_CODE=${EXIT_CODE:-0}
           if [ $EXIT_CODE -eq 0 ]; then
             echo "✅ Checkov scan completed successfully."
           elif [ $EXIT_CODE -eq 2 ]; then
             echo "⚠️ Checkov found policy violations (exit 2) — continuing workflow."
           else
-            echo "⚠️ Checkov exited with code $EXIT_CODE (likely config or parsing issue) — continuing anyway."
+            echo "⚠️ Checkov exited with code $EXIT_CODE — continuing anyway."
           fi
 
-          # --- Safe jq validation and repair logic ---
+          # --- Improved jq handling for both object and array structures ---
           if [ -f reports/checkov-report.json ]; then
             echo "🔍 Validating Checkov JSON format..."
             if jq empty reports/checkov-report.json > /dev/null 2>&1; then
-              echo "✅ JSON format valid — copying to fixed file."
-              cp reports/checkov-report.json reports/checkov-fixed.json
-            else
-              echo "⚠️ Invalid JSON detected — attempting safe repair..."
-              cp reports/checkov-report.json reports/checkov-report.backup.json
-              sed -E 's/,\s*}/}/g; s/,\s*]/]/g' reports/checkov-report.backup.json > reports/checkov-fixed.json || true
+              echo "✅ JSON is valid, checking structure..."
 
-              if jq empty reports/checkov-fixed.json > /dev/null 2>&1; then
-                echo "✅ JSON repaired successfully."
+              # Detect if root element is an array or object
+              ROOT_TYPE=$(jq -r 'if type=="array" then "array" else "object" end' reports/checkov-report.json)
+
+              if [ "$ROOT_TYPE" = "array" ]; then
+                echo "📦 Root type: array — extracting first element."
+                jq '.[0]' reports/checkov-report.json > reports/checkov-fixed.json
               else
-                echo "❌ Could not repair JSON, restoring backup."
-                cp reports/checkov-report.backup.json reports/checkov-fixed.json
+                echo "📦 Root type: object — copying as is."
+                cp reports/checkov-report.json reports/checkov-fixed.json
               fi
+
+              echo "✅ JSON formatted successfully for DefectDojo."
+            else
+              echo "⚠️ Invalid JSON detected — keeping original."
+              cp reports/checkov-report.json reports/checkov-fixed.json
             fi
+
             echo "📊 Showing Checkov summary for debug:"
-            jq '.[]?.summary? // empty' reports/checkov-fixed.json || true
+            jq '.summary' reports/checkov-fixed.json || true
           else
             echo "{}" > reports/checkov-fixed.json
             echo "⚠️ No report generated, created empty file."
@@ -87,4 +91,3 @@ jobs:
             -F "verified=true" \
             -F "minimum_severity=Info" \
             -F "auto_create_context=true"
-
