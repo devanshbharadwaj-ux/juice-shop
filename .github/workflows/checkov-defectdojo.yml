@@ -27,8 +27,8 @@ jobs:
         run: |
           cd advanced-security-terraform
           mkdir -p reports
-          checkov -d . -o sarif --output-file-path reports/checkov-report.sarif || true
-          checkov -d . --output json --output-file-path reports/checkov-report.json || true
+          
+          checkov -d . --output json --compact --output-file-path reports/checkov-report.json || true
           echo " Checkov scan completed"
 
       - name: Upload Checkov reports as artifact
