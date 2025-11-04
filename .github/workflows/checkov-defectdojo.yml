@@ -11,8 +11,8 @@ jobs:
     steps:
       - name: Clone target Terraform repository
         run: |
-          git clone https://github.com/octodemo/advanced-security-terraform.git
-          cd advanced-security-terraform
+          git clone https://github.com/octodemo/advanced-security-terraform.git repo
+           
           echo " Repository cloned successfully"
 
       - name: Set up Python
@@ -24,52 +24,21 @@ jobs:
         run: | 
           pip install checkov
           sudo apt-get update -y
-          sudo apt-get install -y jq
+          sudo apt-get install -y 
 
       - name: Run Checkov scan on cloned repo
         run: |
-          cd advanced-security-terraform
-          mkdir -p reports
-          
-          echo "🚀 Running Checkov scan..."
-          checkov -d . --output json --output-file-path reports/checkov-report.json || EXIT_CODE=$?
-          
-          EXIT_CODE=${EXIT_CODE:-0}
-          if [ $EXIT_CODE -eq 0 ]; then
-            echo "✅ Checkov scan completed successfully."
-          elif [ $EXIT_CODE -eq 2 ]; then
-            echo "⚠️ Checkov found policy violations (exit 2) — continuing workflow."
-          else
-            echo "⚠️ Checkov exited with code $EXIT_CODE — continuing anyway."
-          fi
-
-          # --- Proper jq extraction for Checkov array output ---
-          if [ -f reports/checkov-report.json ]; then
-            echo "🔍 Extracting JSON safely..."
+           checkov --directory  repo/terraform \         
+           --output json \
+           --compact \
+           --soft-fail > repo/checkov_output.json || true
+           
             
-            # If it's an array, flatten and keep only the object content
-            jq 'if type=="array" then .[] else . end' reports/checkov-report.json > reports/checkov-fixed.json
-
-            # Validation
-            if jq empty reports/checkov-fixed.json > /dev/null 2>&1; then
-              echo "✅ checkov-fixed.json created successfully."
-            else
-              echo "⚠️ Could not parse JSON correctly, using fallback copy."
-              cp reports/checkov-report.json reports/checkov-fixed.json
-            fi
-
-            echo "📊 Showing Checkov summary for debug:"
-            jq '.summary' reports/checkov-fixed.json || true
-          else
-            echo "{}" > reports/checkov-fixed.json
-            echo "⚠️ No report generated, created empty file."
-          fi
-
       - name: Upload Checkov reports as artifact
         uses: actions/upload-artifact@v4
         with:
           name: checkov-reports
-          path: advanced-security-terraform/reports/
+          path: repo/checkov_output.json 
 
       - name: Send Checkov report to DefectDojo
         run: |
@@ -78,7 +47,7 @@ jobs:
             -H "Authorization: Token ${{ secrets.DEFECTDOJO_API_KEY }}" \
             -F "scan_type=Checkov Scan" \
             -F "engagement=${{ secrets.DEFECTDOJO_ENGAGEMENT_ID }}" \
-            -F "file=@advanced-security-terraform/reports/checkov-fixed.json" \
+            -F "file=@repo/checkov_output.json" \
             -F "active=true" \
             -F "verified=true" \
             -F "minimum_severity=Info" \
